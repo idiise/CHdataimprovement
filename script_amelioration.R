@@ -9,7 +9,7 @@ library(labelled)
 library(data.table)
 library(reshape2)
 
-# Importation de la base et sélection des variables d'intérêt -------------
+# Importation de la base et sÃ©lection des variables d'intÃ©rÃªt -------------
 
 setwd("C:\\Users\\idrissa.dabo\\OneDrive - World Food Programme\\Documents\\job PAM\\Tchad")
 CHD_ENSA_HH_OCTOBRE_2019 <- read_sav("3_ProcessedData/CHD_ENSA_HH_OCTOBRE_2019_Final_analyse_partage.sav")
@@ -42,20 +42,20 @@ data <- CHD_ENSA_HH_OCTOBRE_2019  %>%select(adm1_name = region,
                                             # source_eau_boisson = source_eau_boisson,
                                             # type_toilette = type_toilette)
 
-# Les différents Facteurs contributifs
-# Pendant les six dernier mois, le ménage a-t-il subi un choc ? choc_subi
+# Les diffÃ©rents Facteurs contributifs
+# Pendant les six dernier mois, le mÃ©nage a-t-il subi un choc ? choc_subi
 # Quel est le type de choc subis? nature_choc
-# Avez-vous contracté des dettes que vous devez rembourser ? contracte_dette
-# Avez-vous actuellement la possibilité de contracter une dette auprès de quelqu'un/d'une structure en cas de besoin ? possibilite_contrate_dette
+# Avez-vous contractÃ© des dettes que vous devez rembourser ? contracte_dette
+# Avez-vous actuellement la possibilitÃ© de contracter une dette auprÃ¨s de quelqu'un/d'une structure en cas de besoin ? possibilite_contrate_dette
 # Avez-vous vendu des biens non productifs (ex. mobilier, bijoux, etc.) par manque de nourriture? biens_non_productif
-# Comment jugez-vous votre production de la campagne agricole en cours par rapport à la campagne 2018/2019 ? comparaison_campagne
-# Quelle est la principale source d'énergie pour la cuisson des aliments dans votre ménage ? energie_cuisson_aliment
-# Quelle est la principale source d'eau de boisson de votre ménage ? source_eau_boisson
-# Quel est le principal type de toilette que votre ménage utilise ? type_toilette
+# Comment jugez-vous votre production de la campagne agricole en cours par rapport Ã  la campagne 2018/2019 ? comparaison_campagne
+# Quelle est la principale source d'Ã©nergie pour la cuisson des aliments dans votre mÃ©nage ? energie_cuisson_aliment
+# Quelle est la principale source d'eau de boisson de votre mÃ©nage ? source_eau_boisson
+# Quel est le principal type de toilette que votre mÃ©nage utilise ? type_toilette
 
 
 
-# recoder les modalités des variables -------------------------------------
+# recoder les modalitÃ©s des variables -------------------------------------
 
 data$FCG <- fct_recode(data$FCG,Poor ="Pauvre",Bordeline="Limite",Acceptable="Acceptable")
 
@@ -82,42 +82,28 @@ data <- data %>%
 # Tableaux des indicateurs de preuves directes ----------------------------
 
 table_names <- c("HDDStable","FCGtable","HHStable","rCSItable","LHCStable")
-indicator_names <- list("CH_HDDS","FCG","CH_HHS","CH_rCSI","LHCS")
-
-data <- data.frame(data)
+indicator_names <- list("CH_HDDS","FCSCat","CH_HHS","CH_rCSI","LhHCSCat")
 for (i in 1:length(table_names)) {
   nameTab <- table_names[i]
   indname <- indicator_names[[i]]
-  attach(data)
-  b <- aggregate(data[,indname],by=list(adm1_name = data$adm1_name,adm2_name = data$adm2_name,n=data$indname),FUN= length)
- attach(b)
-  colnames(b)[4] <- "x"
-  d <- dcast(b,adm1_name+adm2_name~n,value.var = "x")
-  d <- d %>% replace(., is.na(.), 0) %>% 
-    mutate_if(is.numeric,prop.table(1))
-  d <-cbind(d[1:2], round(100*d[-(1:2)]/rowSums(d[-(1:2)]),1))
-  assign(nameTab,d)
+  assign(nameTab,data %>% 
+           group_by(ADMIN1Name, ADMIN2Name) %>%
+           count(indname,wt=WeightHHS) %>%
+           drop_na() %>%
+           mutate(n = 100 * n / sum(n)) %>%
+           ungroup() %>%
+           spread(key = indname, value = n) %>% replace(., is.na(.), 0) %>% mutate_if(is.numeric, round, 1))
 }
 
-
-attach(b)
-b <- aggregate(data[,"LHCS"],by=list(adm1_name = data$adm1_name,adm2_name = data$adm2_name,n=data$LHCS),FUN= length)
-attach(b)
-colnames(b)[4] <- "x"
-d <- dcast(b,adm1_name+adm2_name~n,value.var = "x")
-d <- d %>% replace(., is.na(.), 0)
- d <-cbind(d[1:2], round(100*d[-(1:2)]/rowSums(d[-(1:2)]),1))
-
-Ind_table <- function(base,t){
-  as.data.frame(base)
-  attach(base)
-  y <- aggregate(base[,t],by=list(adm1_name = base$adm1_name,adm2_name = base$adm2_name,n=base$t),FUN= length)
-  attach(y)
-  colnames(y)[4] <- "x"
-  z <- dcast(y,adm1_name+adm2_name~n,value.var = "x")
-  z <- z %>% replace(., is.na(.), 0)
-  z <-cbind(z[1:2], round(100*z[-(1:2)]/rowSums(z[-(1:2)]),1))
-  return(z)
+Ind_table <- function(x){
+  a <- data %>% 
+    group_by(ADMIN1Name, ADMIN2Name) %>%
+    count(x,wt=WeightHHS) %>%
+    drop_na() %>%
+    mutate(n = 100 * n / sum(n)) %>%
+    ungroup() %>%
+    spread(key = x, value = n) %>% replace(., is.na(.), 0) %>% mutate_if(is.numeric, round, 1)
+  return(a)
 }
 
 a <- Ind_table(data,"CH_HDDS")
